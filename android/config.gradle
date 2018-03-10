@@ -1,0 +1,13 @@
+ext.appInfo = [
+		version: '1.0.0',
+		build: 1,
+		applicationID: "com.lukef.scan"
+]
+
+ext.versions = [
+		minSDK: 21,
+		targetSDK: 27,
+		kotlin: '1.2.30',
+		googleSupport: '27.1.0',
+		googlePlay: '11.8.0'
+]

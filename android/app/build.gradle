@@ -1,0 +1,45 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply from: "../flutter.gradle"
+apply from: '../config.gradle'
+
+android {
+	compileSdkVersion versions.targetSDK
+	buildToolsVersion '27.0.3'
+	defaultConfig {
+		applicationId "$appInfo.applicationID"
+		minSdkVersion versions.minSDK
+		targetSdkVersion versions.targetSDK
+		versionCode appInfo.build
+		versionName "$appInfo.version"
+		testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+	}
+	buildTypes {
+		release {
+			signingConfig signingConfigs.debug
+		}
+	}
+	lintOptions {
+		disable 'InvalidPackage'
+	}
+}
+
+dependencies {
+	// kotlin
+	compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${versions.kotlin}"
+	// google
+	implementation "com.android.support:support-v4:${versions.googleSupport}"
+	implementation "com.android.support:appcompat-v7:${versions.googleSupport}"
+	implementation "com.google.android.gms:play-services-vision:${versions.googlePlay}"
+	// testing
+	androidTestImplementation('com.android.support.test.espresso:espresso-core:3.0.1', {
+		exclude group: 'com.android.support', module: 'support-annotations'
+	})
+	androidTestImplementation('com.android.support.test:runner:1.0.1', {
+		exclude group: 'com.android.support', module: 'support-annotations'
+	})
+	testImplementation 'junit:junit:4.12'
+}
+repositories {
+	mavenCentral()
+}
