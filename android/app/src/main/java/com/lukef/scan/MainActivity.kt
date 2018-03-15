@@ -2,9 +2,7 @@ package com.lukef.scan
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.ImageFormat
 import android.graphics.Matrix
-import android.graphics.Rect
 import android.hardware.camera2.*
 import android.os.Bundle
 import android.util.Size
@@ -23,18 +21,9 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 import io.flutter.view.TextureRegistry
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
-import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
-import java.util.*
-import android.support.annotation.NonNull
-import com.lukef.scan.extensions.flipped
-import kotlin.math.max
-import kotlin.math.min
-import android.hardware.camera2.CameraCharacteristics
-
-
 
 
 class MainActivity : FlutterActivity() {
@@ -76,7 +65,7 @@ class MainActivity : FlutterActivity() {
 	}
 
 	private fun registerScanChannel() : MethodChannel {
-		val channel = MethodChannel(flutterView, Channel.named(Channel.Scan))
+		val channel = MethodChannel(flutterView, Channel.named(Channel.Camera))
 		channel.setMethodCallHandler { call, result -> handleScanChannel(call, result) }
 		return channel
 	}
@@ -107,8 +96,8 @@ class MainActivity : FlutterActivity() {
 		val texture = flutterView.createSurfaceTexture()
 
 		// determine the preview size
-		val optimalPreviewSize = cameraInfo.chooseOptimalOutputSize(screenSize())?.flipped()
-				?: cameraInfo.largestCaptureSize?.flipped()
+		val optimalPreviewSize = cameraInfo.chooseOptimalOutputSize(screenSize())
+				?: cameraInfo.largestCaptureSize
 				?: throw CameraInitializationException("Could not define an appropriate capture size", "general")
 		// configure the surface
 		val surfaceTexture = texture.surfaceTexture()
@@ -119,10 +108,6 @@ class MainActivity : FlutterActivity() {
 
 		previewRequestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
 		previewRequestBuilder?.addTarget(surface)
-
-		val m = cameraInfo.characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
-		val zoomCrop = Rect(0, 0, 3044, 3044)
-		previewRequestBuilder?.set(CaptureRequest.SCALER_CROP_REGION, zoomCrop)
 
 		camera.createCaptureSession(listOf(surface), captureStateCallback, null);
 		cameraInitResult?.success(mapOf(
@@ -183,7 +168,7 @@ class MainActivity : FlutterActivity() {
 		}
 	}
 
-	private fun transformMatrix(originalMatrix: FloatArray, viewSize: Size, previewSize: Size) : Matrix? {
+	private fun transformMatrix(viewSize: Size, previewSize: Size) : Matrix? {
 		if (viewSize.width == 0 || viewSize.height == 0) {
 			Log.d(logTag, "Skipping transform. View size is invalid.")
 			return null
@@ -192,7 +177,6 @@ class MainActivity : FlutterActivity() {
 		val pivotPointY = viewSize.height / 2.0f
 		val yScaleMultiplier = previewSize.width.toFloat() / previewSize.height.toFloat()
 		val transformMatrix = Matrix()
-		transformMatrix.setValues(originalMatrix)
 		transformMatrix.setScale(1.0f, 1.0f * yScaleMultiplier, pivotPointX, pivotPointY)
 		return transformMatrix
 	}

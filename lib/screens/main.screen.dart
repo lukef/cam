@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:scan/models/app_error.dart';
+import 'package:scan/models/camera_error.dart';
+import 'package:scan/widgets/camera_view.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -8,110 +9,69 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  
   // consts
   final backgroundColor = const Color(0xFF222222);
-
   // channels
-  static final scanChannel = new MethodChannel("com.lukef.scan/scan");
-  static final systemChromeChannel = new MethodChannel("com.lukef.scan/systemChrome");
-
+  static final _systemChromeChannel = new MethodChannel("com.lukef.scan/systemChrome");
   // members
-  int _textureId;
-  AppError _error;
-
-  @override
-  void initState() {
-    _registerScannerChannel();
-    _initializeScanner();    
-    super.initState();
-  }
-
-  _initializeScanner() async {
-    try {
-      final Map<dynamic, dynamic> response = await scanChannel.invokeMethod("create");
-      setState(() {
-        _textureId = response["textureId"];
-      });
-    } catch(ex) {
-      var error = new AppError.unknown();
-      if (ex is PlatformException) {
-        error = new AppError(ex.message, code: ex.code, data: ex.details);
-      }
-      setState((){
-        _error = error;
-      });
-    }
-  }
+  CameraError _cameraError;
+  bool _isCameraInitialized = false;
 
   @override
   Widget build(BuildContext context) {
     _updateSystemChrome();
     return new Material(
       color: backgroundColor,
-      child: _contentWidget(),
+      child: (_cameraError == null ? _readyStateWidget() : _fullscreenErrorStateWidget()),
     );
   }
 
-  // ui
-  Widget _contentWidget() {
-    if (_error != null) return _fullscreenErrorStateWidget();
-    return (_textureId == null) ? _initializingStateWidget() : _readyStateWidget();
-  }
-
-  _readyStateWidget() {
-    return new Stack(
-      children: <Widget>[
-        new Positioned.fill(child: new Texture(textureId: _textureId)),
-        new Positioned(
-          bottom: 0.0,
-          left: 0.0,
-          right: 0.0,
-          height: 140.0,
-          child: new Container(
-            color: const Color(0xAA000000),
-            child: new Center(
-              child: new Container(
-                width: 80.0, height: 80.0,
-                child: new FlatButton(
-                  color: const Color(0xFF42f498),
-                  highlightColor: const Color(0x22000000),
-                  splashColor: const Color(0x44000000),
-                  shape: new CircleBorder(),
-                  child: new Image.asset(
-                    "assets/images/ic_camera_lens_black.png",
-                    color: const Color(0x88000000),
-                    height: 36.0,
-                    width: 36.0,
-                  ),
-                  onPressed: () {},
+  _readyStateWidget() => Stack(
+    children: <Widget>[
+      Positioned.fill(
+        // child: new Texture(textureId: _textureId),
+        child: CameraView(
+          onInitialized: (err) {
+            _isCameraInitialized = (err == null);
+            if (err != null) {
+              _cameraError = err;
+            }
+            setState((){});
+          },
+        ),
+      ),
+      Positioned(
+        bottom: 0.0,
+        left: 0.0,
+        right: 0.0,
+        height: 140.0,
+        child: Container(
+          color: Color(0xAA000000),
+          child: Center(
+            child: Container(
+              width: 80.0, height: 80.0,
+              child: FlatButton(
+                color: Color(0xFF42f498),
+                highlightColor: Color(0x22000000),
+                splashColor: Color(0x44000000),
+                shape: CircleBorder(),
+                child: Image.asset(
+                  "assets/images/ic_camera_lens_black.png",
+                  color: Color(0x88000000),
+                  height: 36.0,
+                  width: 36.0,
                 ),
+                onPressed: () {},
               ),
             ),
           ),
-        )
-      ],
-    );
-  }
-
-  _initializingStateWidget() {
-    return new Container(
-      child: new Center(
-        child: new Container(
-          width: 140.0,
-          height: 1.0,
-          child: new LinearProgressIndicator(
-            backgroundColor: const Color(0x22000000),
-            valueColor: new AlwaysStoppedAnimation<Color>(const Color(0xFFAAAAAA)),
-            value: null,
-          ),
         ),
-      ),
-    );
-  }
+      )
+    ],
+  );
 
   _fullscreenErrorStateWidget() {
-      systemChromeChannel.invokeMethod("update", {
+      _systemChromeChannel.invokeMethod("update", {
         "statusBarColor" : "#f44256",
         "navigationBarColor" : "#f44256",
       });
@@ -159,7 +119,7 @@ class _MainScreenState extends State<MainScreen> {
               new Padding(
                 padding: const EdgeInsets.only(top: 10.0),
                 child: new Text(
-                  "${_error.message}",
+                  "${_cameraError.message}",
                   style: const TextStyle(
                     color: const Color(0xFFFFFFFF),
                     fontFamily: "Roboto Mono",
@@ -175,16 +135,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   _updateSystemChrome() {
-    systemChromeChannel.invokeMethod("update", {
-      "statusBarColor" : _textureId == null ? "#222222" : "#00FFFFFF",
-      "navigationBarColor" : _textureId == null ? "#222222" : "#000000",
+    _systemChromeChannel.invokeMethod("update", {
+      "statusBarColor" : !_isCameraInitialized ? "#222222" : "#00FFFFFF",
+      "navigationBarColor" : !_isCameraInitialized ? "#222222" : "#000000",
     });
   }
 
-  // channel registration
-  _registerScannerChannel() {
-    scanChannel.setMethodCallHandler((call) {
-
-    });
-  }
 }
